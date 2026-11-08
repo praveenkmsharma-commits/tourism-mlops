@@ -37,6 +37,7 @@ def evaluate(y, pred, probability):
             "pr_auc": float(average_precision_score(y, probability))}
 
 def train():
+    print("Start")
     DEPLOYMENT.mkdir(parents=True, exist_ok=True)
     REPORTS.mkdir(parents=True, exist_ok=True)
     Xtrain = pd.read_csv(ROOT / "Xtrain.csv")[FEATURES]
@@ -60,7 +61,7 @@ def train():
     search = GridSearchCV(model, param_grid, scoring="average_precision",
                           cv=StratifiedKFold(n_splits=3, shuffle=True, random_state=42),
                           n_jobs=2, refit=True, error_score="raise")
-    tracking_uri = os.environ.get("MLFLOW_TRACKING_URI", f"sqlite:///{ROOT / 'mlflow.db'}")
+    tracking_uri = os.environ.get("MLFLOW_TRACKING_URI", public_url)
     mlflow.set_tracking_uri(tracking_uri)
     mlflow.set_experiment("Tourism_Wellness_Purchase")
     print("MLflow tracking URI:", tracking_uri)
@@ -131,4 +132,5 @@ def train():
     return report
 
 if __name__ == "__main__":
+    print("start")
     train()
