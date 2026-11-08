@@ -1,0 +1,95 @@
+{
+  "features": [
+    "Age",
+    "CityTier",
+    "NumberOfPersonVisiting",
+    "PreferredPropertyStar",
+    "NumberOfTrips",
+    "Passport",
+    "OwnCar",
+    "NumberOfChildrenVisiting",
+    "MonthlyIncome",
+    "Occupation",
+    "Gender",
+    "MaritalStatus",
+    "Designation"
+  ],
+  "numeric": {
+    "Age": {
+      "min": 18.0,
+      "max": 61.0,
+      "default": 36.0
+    },
+    "CityTier": {
+      "min": 1.0,
+      "max": 3.0,
+      "default": 1.0
+    },
+    "NumberOfPersonVisiting": {
+      "min": 1.0,
+      "max": 5.0,
+      "default": 3.0
+    },
+    "PreferredPropertyStar": {
+      "min": 3.0,
+      "max": 5.0,
+      "default": 3.0
+    },
+    "NumberOfTrips": {
+      "min": 1.0,
+      "max": 21.0,
+      "default": 3.0
+    },
+    "Passport": {
+      "min": 0.0,
+      "max": 1.0,
+      "default": 0.0
+    },
+    "OwnCar": {
+      "min": 0.0,
+      "max": 1.0,
+      "default": 1.0
+    },
+    "NumberOfChildrenVisiting": {
+      "min": 0.0,
+      "max": 3.0,
+      "default": 1.0
+    },
+    "MonthlyIncome": {
+      "min": 1000.0,
+      "max": 98678.0,
+      "default": 22403.0
+    }
+  },
+  "categorical": {
+    "Occupation": [
+      "Freelancer",
+      "Large Business",
+      "Salaried",
+      "Small Business"
+    ],
+    "Gender": [
+      "Female",
+      "Male"
+    ],
+    "MaritalStatus": [
+      "Divorced",
+      "Married",
+      "Single"
+    ],
+    "Designation": [
+      "AVP",
+      "Executive",
+      "Manager",
+      "Senior Manager",
+      "VP"
+    ]
+  },
+  "threshold": 0.5,
+  "versions": {
+    "python": "3.11.18",
+    "sklearn": "1.6.1",
+    "xgboost": "3.0.2",
+    "joblib": "1.4.2"
+  }
+}

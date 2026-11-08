@@ -1,0 +1,57 @@
+{
+  "model": "XGBClassifier",
+  "threshold": 0.5,
+  "selection_metric": "cross_validated_average_precision",
+  "best_cv_pr_auc": 0.6936876590074431,
+  "best_params": {
+    "xgbclassifier__learning_rate": 0.1,
+    "xgbclassifier__max_depth": 5,
+    "xgbclassifier__n_estimators": 200,
+    "xgbclassifier__scale_pos_weight": 1.0
+  },
+  "test_metrics": {
+    "accuracy": 0.8861985472154964,
+    "precision": 0.8217821782178217,
+    "recall": 0.5220125786163522,
+    "f1": 0.6384615384615384,
+    "roc_auc": 0.8976266583689287,
+    "pr_auc": 0.7339829973102766
+  },
+  "baseline_test_metrics": {
+    "accuracy": 0.8075060532687651,
+    "precision": 0.0,
+    "recall": 0.0,
+    "f1": 0.0,
+    "roc_auc": 0.5,
+    "pr_auc": 0.19249394673123488
+  },
+  "train_rows": 3302,
+  "test_rows": 826,
+  "features": [
+    "Age",
+    "CityTier",
+    "NumberOfPersonVisiting",
+    "PreferredPropertyStar",
+    "NumberOfTrips",
+    "Passport",
+    "OwnCar",
+    "NumberOfChildrenVisiting",
+    "MonthlyIncome",
+    "Occupation",
+    "Gender",
+    "MaritalStatus",
+    "Designation"
+  ],
+  "mlflow_run_id": "eed70779c9c44833b8c47d1530a55514",
+  "versions": {
+    "python": "3.11.18",
+    "sklearn": "1.6.1",
+    "xgboost": "3.0.2",
+    "joblib": "1.4.2"
+  },
+  "limitations": [
+    "Historical ProdTaken is a proxy, not verified new-wellness-package demand.",
+    "Interaction features excluded for pre-contact use.",
+    "Sensitive attributes require fairness and governance review."
+  ]
+}
