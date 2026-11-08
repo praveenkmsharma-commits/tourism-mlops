@@ -1,12 +1,21 @@
 """Streamlit interface for the Tourism pre-contact purchase propensity model."""
 from pathlib import Path
 import json
-import joblib
-import pandas as pd
+import logging
 import streamlit as st
 
 HERE = Path(__file__).resolve().parent
 st.set_page_config(page_title="Visit with Us | Wellness Tourism", page_icon="🌿", layout="wide")
+try:
+    import joblib
+    import pandas as pd
+except ModuleNotFoundError:
+    logging.exception("Missing Streamlit application dependency")
+    st.error("Application dependencies are missing. Commit tourism_project/deployment/requirements.txt "
+             "to the deployed GitHub branch, then reboot the app in Streamlit Cloud. "
+             "Use Python 3.11 to match the training environment.")
+    st.stop()
+
 st.title("Visit with Us")
 st.subheader("Wellness Tourism · Customer purchase propensity")
 st.caption("A decision-support estimate using customer information available before sales contact.")
@@ -19,8 +28,15 @@ def load_model(model_mtime, schema_mtime):
 if not (HERE / "model.joblib").exists() or not (HERE / "schema.json").exists():
     st.warning("The model has not been trained yet. Complete the GitHub Actions pipeline first.")
     st.stop()
-model, schema = load_model((HERE / "model.joblib").stat().st_mtime_ns,
-                           (HERE / "schema.json").stat().st_mtime_ns)
+try:
+    model, schema = load_model((HERE / "model.joblib").stat().st_mtime_ns,
+                               (HERE / "schema.json").stat().st_mtime_ns)
+except ModuleNotFoundError:
+    logging.exception("Missing dependency required by the saved model")
+    st.error("The saved model requires packages that are not installed. Deploy all pinned packages "
+             "from tourism_project/deployment/requirements.txt, including scikit-learn and xgboost, "
+             "then reboot the app in Streamlit Cloud.")
+    st.stop()
 labels = {"Age": "Age (years)", "CityTier": "City tier", "NumberOfPersonVisiting": "People visiting",
           "PreferredPropertyStar": "Preferred hotel stars", "NumberOfTrips": "Annual trips",
           "Passport": "Passport (0: No, 1: Yes)", "OwnCar": "Own car (0: No, 1: Yes)",
