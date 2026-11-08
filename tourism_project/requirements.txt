@@ -7,3 +7,4 @@ mlflow==3.0.1
 matplotlib==3.10.3
 streamlit==1.45.1
 PyGithub==2.9.1
+SQLAlchemy==2.0.41
