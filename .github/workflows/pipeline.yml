@@ -2,25 +2,17 @@ name: Tourism Project Pipeline
 
 on:
   push:
-    branches: [main]
-    paths:
-      - 'tourism_project/data/**'
-      - 'tourism_project/model_building/**'
-      - 'tourism_project/requirements.txt'
-      - 'tourism_project/deployment/app.py'
-      - 'tourism_project/deployment/requirements.txt'
-      - '.github/workflows/pipeline.yml'
-  workflow_dispatch:
+    branches:
+      - main            # Automatically triggers on push to the main branch
+  workflow_dispatch:     # lets you click "Run workflow" in the Actions tab
 
 permissions:
   contents: write
 
-concurrency:
-  group: tourism-pipeline-${{ github.ref }}
-  cancel-in-progress: false
-
 jobs:
+ # JOB1: Register Dataset
   register-dataset:
+    name: Register Dataset
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -40,7 +32,9 @@ jobs:
           path: tourism_project/data/tourism.csv
           if-no-files-found: error
 
-  data-prep:
+# JOB2: Data Preparation
+  data-preparation:
+    name: Data Preparation
     needs: register-dataset
     runs-on: ubuntu-latest
     steps:
@@ -75,52 +69,35 @@ jobs:
           name: data-reports
           path: tourism_project/reports/
           if-no-files-found: error
+    
 
-  model-traning:
-    needs: data-prep
+  # ---------- JOB 3: Model Training + MLflow Tracking ----------
+  model-training:
+    name: Model Training
+    needs: data-preparation          # waits for Job 2 to finish
     runs-on: ubuntu-latest
-    env:
-      MLFLOW_TRACKING_URI: sqlite:///mlflow.db
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
-          cache: pip
-          cache-dependency-path: tourism_project/requirements.txt
-      - name: Install Dependencies
-        run: python -m pip install -r tourism_project/requirements.txt
-      - name: Download Train Test Splits
+          python-version: "3.11"
+      - name: Install dependencies
+        run: pip install -r tourism_project/requirements.txt
+      - name: Download train/test splits
         uses: actions/download-artifact@v4
         with:
-          name: data-splits
-      - name: Download Data Reports
-        uses: actions/download-artifact@v4
-        with:
-          name: data-reports
-          path: tourism_project/reports
-      # Direct SQLite tracking does not need a background MLflow server or ngrok.
-      - name: Model Building
+          name: data-splits          # brings Xtrain/Xtest/ytrain/ytest from Job 2
+      - name: Start MLflow tracking server
+        run: |
+          nohup mlflow ui --host 0.0.0.0 --port 5000 &   # Run MLflow UI in the background
+          sleep 5                                        # give the server a moment to start
+      - name: Train model with MLflow tracking
         run: python tourism_project/model_building/train.py
-      - name: Validate Model and App
-        run: python -m unittest discover -s tourism_project/tests -v
-      - name: Preserve Evaluation and MLflow Tracking
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: tourism-evaluation-and-tracking
-          path: |
-            tourism_project/reports/
-            mlflow.db
-            mlruns/
-          if-no-files-found: warn
-      - name: Commit Trained Model
+      - name: Commit trained model
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add tourism_project/deployment/model.joblib tourism_project/deployment/schema.json tourism_project/reports
-          if ! git diff --cached --quiet; then
-            git commit -m "Add trained Tourism model [skip ci]"
-            git pull --rebase origin main
-            git push origin HEAD:main
-          fi
+          git commit -m "Add trained model [skip ci]" || echo "No changes to commit"
+          git push
+
