@@ -1,0 +1,126 @@
+name: Tourism Project Pipeline
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'tourism_project/data/**'
+      - 'tourism_project/model_building/**'
+      - 'tourism_project/requirements.txt'
+      - 'tourism_project/deployment/app.py'
+      - 'tourism_project/deployment/requirements.txt'
+      - '.github/workflows/pipeline.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: tourism-pipeline-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  register-dataset:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+          cache-dependency-path: tourism_project/requirements.txt
+      - name: Install Dependencies
+        run: python -m pip install -r tourism_project/requirements.txt
+      - name: Register Dataset
+        run: python tourism_project/model_building/data_register.py
+      - name: Upload Registered Dataset
+        uses: actions/upload-artifact@v4
+        with:
+          name: registered-data
+          path: tourism_project/data/tourism.csv
+          if-no-files-found: error
+
+  data-prep:
+    needs: register-dataset
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+          cache-dependency-path: tourism_project/requirements.txt
+      - name: Install Dependencies
+        run: python -m pip install -r tourism_project/requirements.txt
+      - name: Download Registered Dataset
+        uses: actions/download-artifact@v4
+        with:
+          name: registered-data
+          path: tourism_project/data
+      - name: Run Data Preparation
+        run: python tourism_project/model_building/prep.py
+      - name: Upload Train Test Splits
+        uses: actions/upload-artifact@v4
+        with:
+          name: data-splits
+          path: |
+            Xtrain.csv
+            Xtest.csv
+            ytrain.csv
+            ytest.csv
+          if-no-files-found: error
+      - name: Upload Data Reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: data-reports
+          path: tourism_project/reports/
+          if-no-files-found: error
+
+  model-traning:
+    needs: data-prep
+    runs-on: ubuntu-latest
+    env:
+      MLFLOW_TRACKING_URI: sqlite:///mlflow.db
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+          cache-dependency-path: tourism_project/requirements.txt
+      - name: Install Dependencies
+        run: python -m pip install -r tourism_project/requirements.txt
+      - name: Download Train Test Splits
+        uses: actions/download-artifact@v4
+        with:
+          name: data-splits
+      - name: Download Data Reports
+        uses: actions/download-artifact@v4
+        with:
+          name: data-reports
+          path: tourism_project/reports
+      # Direct SQLite tracking does not need a background MLflow server or ngrok.
+      - name: Model Building
+        run: python tourism_project/model_building/train.py
+      - name: Validate Model and App
+        run: python -m unittest discover -s tourism_project/tests -v
+      - name: Preserve Evaluation and MLflow Tracking
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: tourism-evaluation-and-tracking
+          path: |
+            tourism_project/reports/
+            mlflow.db
+            mlruns/
+          if-no-files-found: warn
+      - name: Commit Trained Model
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add tourism_project/deployment/model.joblib tourism_project/deployment/schema.json tourism_project/reports
+          if ! git diff --cached --quiet; then
+            git commit -m "Add trained Tourism model [skip ci]"
+            git pull --rebase origin main
+            git push origin HEAD:main
+          fi
