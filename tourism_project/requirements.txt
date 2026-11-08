@@ -1,4 +1,3 @@
-numpy==2.2.6
 pandas==2.2.3
 scikit-learn==1.6.1
 xgboost==3.0.2
@@ -7,3 +6,81 @@ mlflow==3.0.1
 matplotlib==3.10.3
 streamlit==1.45.1
 PyGithub==2.9.1
+""", encoding="utf-8")
+Path("tourism_project/tests").mkdir(parents=True, exist_ok=True)
+Path("tourism_project/tests/test_tourism.py").write_text(r'''from pathlib import Path
+import json
+import unittest
+import joblib
+import numpy as np
+import pandas as pd
+from streamlit.testing.v1 import AppTest
+
+ROOT = Path(__file__).resolve().parents[2]
+
+class TourismTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.model = joblib.load(ROOT / "tourism_project/deployment/model.joblib")
+        cls.schema = json.loads((ROOT / "tourism_project/deployment/schema.json").read_text())
+        cls.X = pd.read_csv(ROOT / "Xtest.csv")
+
+    def test_schema_and_excluded_interactions(self):
+        self.assertEqual(self.X.columns.tolist(), self.schema["features"])
+        for col in ["CustomerID", "ProdTaken", "DurationOfPitch", "PitchSatisfactionScore",
+                    "NumberOfFollowups", "TypeofContact", "ProductPitched"]:
+            self.assertNotIn(col, self.schema["features"])
+
+    def test_probabilities(self):
+        probs = self.model.predict_proba(self.X.head(10))
+        self.assertEqual(probs.shape, (10, 2))
+        self.assertTrue(np.isfinite(probs).all())
+        np.testing.assert_allclose(probs.sum(axis=1), 1.0, atol=1e-6)
+
+    def test_missing_and_unseen_values(self):
+        frame = self.X.head(1).copy()
+        frame["Occupation"] = "Unseen"
+        frame["Age"] = np.nan
+        self.assertTrue(np.isfinite(self.model.predict_proba(frame)).all())
+
+    def test_streamlit_form(self):
+        app = AppTest.from_file(str(ROOT / "tourism_project/deployment/app.py")).run(timeout=60)
+        self.assertEqual(len(app.exception), 0)
+        app.button[0].click().run(timeout=60)
+        self.assertEqual(len(app.exception), 0)
+        self.assertEqual(len(app.error), 0)
+        self.assertEqual(len(app.metric), 1)
+
+if __name__ == "__main__":
+    unittest.main()
+''', encoding="utf-8")
+Path(".gitignore").write_text(""".venv/
+__pycache__/
+*.pyc
+.env
+.streamlit/secrets.toml
+mlflow.db
+mlruns/
+Xtrain.csv
+Xtest.csv
+ytrain.csv
+ytest.csv
+""", encoding="utf-8")
+print("Created workflow dependencies and Tourism validation tests.")
+
+# Databricks experimentation and validation: retain notebook authentication in-process.
+import runpy
+import sys
+import unittest
+assert Path("tourism_project/data/tourism.csv").is_file(), "Upload tourism.csv into tourism_project/data/ first."
+model_building_dir = str(Path('tourism_project/model_building').resolve())
+if model_building_dir not in sys.path:
+    sys.path.insert(0, model_building_dir)
+for module_name in ['data_register', 'prep', 'train']:
+    sys.modules.pop(module_name, None)
+for script in ['data_register.py', 'prep.py', 'train.py']:
+    runpy.run_path(str(Path(model_building_dir) / script), run_name='__main__')
+suite = unittest.defaultTestLoader.discover('tourism_project/tests')
+result = unittest.TextTestRunner(verbosity=2).run(suite)
+assert result.wasSuccessful(), 'Tourism model/app tests failed'
+print("Databricks model training and app tests passed. GitHub publishing is the next separate step.")
