@@ -61,7 +61,7 @@ def train():
     search = GridSearchCV(model, param_grid, scoring="average_precision",
                           cv=StratifiedKFold(n_splits=3, shuffle=True, random_state=42),
                           n_jobs=2, refit=True, error_score="raise")
-    tracking_uri = os.environ.get("MLFLOW_TRACKING_URI", public_url)
+    tracking_uri = os.environ.get("MLFLOW_TRACKING_URI", "https://semierect-untautly-phung.ngrok-free.dev")
     mlflow.set_tracking_uri(tracking_uri)
     mlflow.set_experiment("Tourism_Wellness_Purchase")
     print("MLflow tracking URI:", tracking_uri)
